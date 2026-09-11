@@ -34,32 +34,39 @@ app.post("/api/analyze-exam", async (req, res) => {
       return res.status(500).json({ error: "Gemini API key not configured" });
     }
 
-    // Prepare the prompt with handwriting intelligence and layout awareness
+    // Prepare the prompt with high-precision visual reasoning
     const prompt = `
-      Você é um assistente de IA especializado em correção de provas educacionais com OCR e OMR de alta precisão.
-      Sua tarefa é analisar a imagem da folha de respostas e extrair os dados.
+      Você é um sistema especialista em análise visual de documentos educacionais (OMR e OCR).
+      Sua missão é extrair com 100% de precisão as respostas marcadas pelo aluno nesta folha de respostas.
       
-      ESTRUTURA DO GABARITO OFICIAL:
+      GABARITO OFICIAL (PARA REFERÊNCIA DE IDs):
       ${JSON.stringify(gabarito.questions, null, 2)}
       
-      REFERÊNCIAS VISUAIS (LAYOUT):
-      1. ÂNCORAS: Existem 4 quadrados pretos sólidos nos cantos da folha para orientação. Use-os para alinhar a imagem mentalmente.
-      2. QR CODE: Localizado no lado esquerdo, contém o identificador da prova.
-      3. QUESTÕES DE MÚLTIPLA ESCOLHA (MC): Estão dispostas em colunas. Cada questão tem círculos com as letras A, B, C, D, E. Identifique qual círculo foi preenchido ou marcado com um X.
-      4. QUESTÕES ABERTAS (OPEN): Estão em boxes de grade (tipo planilha) na parte inferior. Realize o OCR das letras manuscritas dentro desses boxes.
+      PASSO A PASSO DA ANÁLISE:
+      1. ORIENTAÇÃO: Localize os 4 quadrados pretos nos cantos da folha. Use-os para alinhar sua perspectiva.
+      2. IDENTIFICAÇÃO: Localize o QR Code à esquerda para confirmar a estrutura da prova.
+      3. PROCESSAMENTO OMR (Múltipla Escolha):
+         - Procure pelas questões numeradas dispostas em colunas.
+         - Cada questão possui círculos de A a E.
+         - Identifique qual círculo foi PREENCHIDO, marcado com um 'X' ou circulado. 
+         - Se houver rasura (duas marcações), marque como vazio ou a marcação mais forte.
+      4. PROCESSAMENTO OCR (Questões Abertas):
+         - Localize as caixas de grade na parte inferior.
+         - Realize o reconhecimento de caracteres (OCR) das letras escritas à mão (letras de fôrma maiúsculas).
+         - Extraia a palavra ou frase completa.
       
-      CONDIÇÕES DE RECONHECIMENTO:
-      - O aluno utiliza letras de fôrma (maiúsculas).
-      - Para MC: Considere a letra que tiver o maior nível de preenchimento ou uma marca de X clara.
-      - Para OPEN: Compare o texto lido com o 'correctText'. Considere correto se o sentido for idêntico.
+      COMPARAÇÃO E PONTUAÇÃO:
+      - Compare cada resposta extraída com o 'correctAnswer' (para MC) ou 'correctText' (para OPEN).
+      - Para questões abertas, pequenas variações de caligrafia que mantenham o sentido da palavra do gabarito devem ser consideradas corretas.
       
-      RETORNE APENAS UM JSON:
+      SAÍDA OBRIGATÓRIA (APENAS JSON):
+      Retorne exclusivamente um objeto JSON seguindo este formato rigoroso:
       {
         "studentAnswers": {
-          "ID_DA_QUESTAO": "RESPOSTA_LIDA"
+          "ID_DA_QUESTAO": "RESPOSTA_LIDA_DO_ALUNO"
         },
-        "score": NÚMERO_DE_ACERTOS,
-        "total": TOTAL_DE_QUESTÕES,
+        "score": TOTAL_DE_ACERTOS,
+        "total": TOTAL_DE_QUESTOES,
         "percentage": PERCENTAGEM_DE_ACERTO
       }
     `;

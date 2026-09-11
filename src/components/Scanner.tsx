@@ -39,6 +39,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onBack, onResult, gabarito }) 
     };
 
     const tick = () => {
+      // Check both local variables and current state (though state might be stale in closure)
+      // We'll use a ref or just rely on the fact that handleQRCodeFound sets scanning to false
       if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
@@ -53,11 +55,9 @@ export const Scanner: React.FC<ScannerProps> = ({ onBack, onResult, gabarito }) 
           inversionAttempts: 'dontInvert',
         });
 
-        if (code) {
-          if (code.data.startsWith('OMR-v1|')) {
-            handleQRCodeFound(code.data);
-            return;
-          }
+        if (code && code.data.startsWith('OMR-v1|')) {
+          handleQRCodeFound(code.data);
+          return; // Stop the loop
         }
       }
       animationFrameId = requestAnimationFrame(tick);
@@ -82,7 +82,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onBack, onResult, gabarito }) 
     try {
       // Capture the current frame as high-quality image
       const canvas = canvasRef.current;
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
+      // High quality capture
+      const imageData = canvas.toDataURL('image/jpeg', 1.0);
 
       const response = await fetch('/api/analyze-exam', {
         method: 'POST',
