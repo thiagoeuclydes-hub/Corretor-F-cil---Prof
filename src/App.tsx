@@ -55,8 +55,13 @@ export default function App() {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed', error);
+      if (error.code === 'auth/unauthorized-domain') {
+        alert('Erro: Este domínio não está autorizado no Firebase. Adicione o link do Vercel/GitHub nas configurações de "Domínios Autorizados" do console do Firebase.');
+      } else {
+        alert('Falha no login: ' + error.message);
+      }
     }
   };
 
@@ -67,11 +72,11 @@ export default function App() {
   };
 
   // Check if the logged in user is the owner
-  const isOwner = user?.email === 'thiagoeuclydes@gmail.com';
+  const isOwner = user?.email?.toLowerCase() === 'thiagoeuclydes@gmail.com';
 
   // Firestore listener
   useEffect(() => {
-    if (!user || !isAuthorized) {
+    if (!user || !isAuthorized || !isOwner) {
       setGabaritos([]);
       return;
     }
@@ -82,30 +87,53 @@ export default function App() {
       orderBy('createdAt', 'desc')
     );
 
-    return onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id,
         createdAt: (doc.data().createdAt as Timestamp).toMillis()
       })) as Gabarito[];
       setGabaritos(data);
+    }, (error) => {
+      console.error("Firestore listener error:", error);
+      if (error.code === 'permission-denied') {
+        alert('Erro de permissão no banco de dados. Verifique as regras do Firestore.');
+      }
     });
-  }, [user, isAuthorized]);
+
+    return unsubscribe;
+  }, [user, isAuthorized, isOwner]);
 
   const handleSaveGabarito = async (gabarito: Gabarito) => {
-    if (!user) return;
+    if (!user) {
+      alert('Você precisa estar logado para salvar.');
+      return;
+    }
     
     try {
+      // Sanitize questions to remove undefined values which Firestore doesn't support
+      const sanitizedQuestions = gabarito.questions.map(q => {
+        const cleaned: any = {
+          id: q.id,
+          type: q.type
+        };
+        if (q.correctAnswer !== undefined) cleaned.correctAnswer = q.correctAnswer;
+        if (q.correctText !== undefined) cleaned.correctText = q.correctText;
+        return cleaned;
+      });
+
       const docRef = doc(db, 'gabaritos', gabarito.id);
       await setDoc(docRef, {
         ...gabarito,
+        questions: sanitizedQuestions,
         userId: user.uid,
         createdAt: Timestamp.fromMillis(gabarito.createdAt)
       });
       setView('dashboard');
       setActiveGabarito(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save', error);
+      alert('Erro ao salvar no banco de dados: ' + error.message);
     }
   };
 

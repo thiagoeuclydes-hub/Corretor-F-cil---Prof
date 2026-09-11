@@ -61,14 +61,22 @@ export const GabaritoForm: React.FC<GabaritoFormProps> = ({ onSave, onCancel, in
     }));
   };
 
-  const handleSave = () => {
-    if (!name.trim()) return;
-    onSave({
-      id: initialData?.id || crypto.randomUUID(),
-      name,
-      questions,
-      createdAt: initialData?.createdAt || Date.now(),
-    });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim() || isSaving) return;
+    setIsSaving(true);
+    try {
+      const id = initialData?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
+      await onSave({
+        id,
+        name,
+        questions,
+        createdAt: initialData?.createdAt || Date.now(),
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -191,10 +199,19 @@ export const GabaritoForm: React.FC<GabaritoFormProps> = ({ onSave, onCancel, in
         <div className="pt-2 md:pt-4">
           <button
             onClick={handleSave}
-            disabled={!name.trim()}
+            disabled={!name.trim() || isSaving}
             className="w-full flex items-center justify-center gap-2 py-3 md:py-4 bg-emerald-600 text-white rounded-xl md:rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-950/20 disabled:opacity-30 disabled:grayscale disabled:shadow-none text-sm md:text-base"
           >
-            <Save size={18} className="md:w-5 md:h-5" /> Salvar Gabarito
+            {isSaving ? (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+              />
+            ) : (
+              <Save size={18} className="md:w-5 md:h-5" />
+            )}
+            {isSaving ? 'Salvando...' : 'Salvar Gabarito'}
           </button>
         </div>
       </div>
