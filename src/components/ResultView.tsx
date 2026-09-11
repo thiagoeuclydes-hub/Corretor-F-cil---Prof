@@ -82,7 +82,7 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, gabarito, onRetr
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 md:gap-2">
-                      <span className={`text-base md:text-lg font-black ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                      <span className={`notranslate text-base md:text-lg font-black ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
                         {studentAnswer}
                       </span>
                       {isCorrect ? (
@@ -99,7 +99,7 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, gabarito, onRetr
                   {!isCorrect && (
                     <div className="text-right shrink-0">
                       <span className="text-[8px] md:text-[10px] text-slate-600 font-bold uppercase block">Gabarito</span>
-                      <span className="text-xs md:text-sm font-bold text-emerald-500">
+                      <span className="notranslate text-xs md:text-sm font-bold text-emerald-500">
                         {q.type === 'MC' ? q.correctAnswer : q.correctText}
                       </span>
                     </div>

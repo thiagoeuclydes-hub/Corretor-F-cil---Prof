@@ -36,37 +36,46 @@ export const PrintView: React.FC<PrintViewProps> = ({ gabarito, onBack }) => {
       </div>
 
       {/* Printable Sheet */}
-      <div className="max-w-[105mm] mx-auto p-2 bg-white text-slate-900 overflow-hidden">
-        <div className="border-2 border-slate-900 p-3 min-h-[138mm] flex flex-col relative">
+      <div className="max-w-[140mm] mx-auto p-8 bg-white text-slate-900 overflow-hidden">
+        <div className="bg-white p-6 min-h-[160mm] flex flex-col relative border border-slate-100">
+          
+          {/* ANCHOR POINTS - TOP */}
+          <div className="absolute top-0 left-0 w-8 h-8 bg-black"></div>
+          <div className="absolute top-0 right-0 w-8 h-8 bg-black"></div>
+          
+          {/* ANCHOR POINTS - BOTTOM */}
+          <div className="absolute bottom-0 left-0 w-8 h-8 bg-black"></div>
+          <div className="absolute bottom-0 right-0 w-8 h-8 bg-black"></div>
+
           {/* Header */}
-          <div className="text-center mb-2">
-            <h1 className="text-sm font-black uppercase tracking-tight">FOLHA DE RESPOSTAS</h1>
-            <p className="text-[10px] text-slate-600 font-bold">{gabarito.name}</p>
-            <p className="text-[8px] text-slate-400">Preencha a bolha (MC) ou escreva na linha (aberta).</p>
+          <div className="text-center mt-4 mb-4">
+            <h1 className="text-xl font-black uppercase tracking-tight text-slate-900">FOLHA DE RESPOSTAS</h1>
+            <p className="text-sm text-slate-700 font-bold mt-1">{gabarito.name}</p>
+            <p className="text-[10px] text-slate-500 mt-1 italic">Preencha a bolha (MC) ou escreva a resposta na linha (aberta).</p>
           </div>
 
-          <div className="border-b border-slate-300 pb-1 mb-4 flex items-end">
-            <span className="text-[10px] font-bold mr-2">Nome:</span>
-            <div className="flex-1 h-px bg-slate-300"></div>
+          {/* User Info */}
+          <div className="mb-8 flex items-end gap-3 px-4">
+            <span className="text-sm font-black uppercase tracking-wider">Nome:</span>
+            <div className="flex-1 border-b-2 border-slate-300 h-6"></div>
           </div>
 
-          <div className="flex gap-4 mb-4 items-start">
+          <div className="flex gap-10 px-4 mb-8">
             {/* QR Code on the left */}
-            <div className="shrink-0 flex flex-col items-center gap-1">
-              <div className="p-1 border-2 border-slate-900 rounded bg-white">
-                <QRCodeSVG value={qrData} size={80} level="H" includeMargin={false} />
+            <div className="shrink-0">
+              <div className="p-2 bg-white">
+                <QRCodeSVG value={qrData} size={150} level="H" includeMargin={false} />
               </div>
-              <p className="text-[6px] font-mono text-slate-400">Scan to Correct</p>
             </div>
 
-            {/* MC Grid as columns */}
-            <div className="flex-1 flex flex-wrap gap-x-4 gap-y-2">
+            {/* MC Grid - Circles arranged vertically like the model */}
+            <div className="flex-1 flex gap-x-8 gap-y-6 flex-wrap">
               {gabarito.questions.filter(q => q.type === 'MC').map((q) => (
                 <div key={q.id} className="flex flex-col items-center">
-                  <span className="text-[10px] font-bold mb-1">{q.id}.</span>
-                  <div className="flex flex-col gap-1">
+                  <span className="text-sm font-black mb-2">{q.id}.</span>
+                  <div className="flex flex-col gap-1.5">
                     {['A', 'B', 'C', 'D', 'E'].map((alt) => (
-                      <div key={alt} className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-400 text-[8px] font-bold text-slate-400">
+                      <div key={alt} className="notranslate flex items-center justify-center w-8 h-8 rounded-full border-2 border-slate-900 text-xs font-black text-slate-900">
                         {alt}
                       </div>
                     ))}
@@ -76,20 +85,15 @@ export const PrintView: React.FC<PrintViewProps> = ({ gabarito, onBack }) => {
             </div>
           </div>
 
-          {/* Open Questions at the bottom */}
-          <div className="mt-auto space-y-4">
+          {/* Open Questions as Grids */}
+          <div className="mt-4 space-y-6 px-4">
             {gabarito.questions.filter(q => q.type === 'OPEN').map((q) => (
-              <div key={q.id} className="flex items-start gap-2">
-                <span className="text-[10px] font-bold mt-1">{q.id}.</span>
+              <div key={q.id} className="flex items-start gap-4">
+                <span className="text-sm font-black mt-2">{q.id}.</span>
                 <div className="flex-1">
-                  <div className="flex border-t border-l border-slate-900">
-                    {Array.from({ length: 14 }).map((_, i) => (
-                      <div key={`r1-${i}`} className="flex-1 aspect-square border-r border-b border-slate-900"></div>
-                    ))}
-                  </div>
-                  <div className="flex border-l border-slate-900">
-                    {Array.from({ length: 14 }).map((_, i) => (
-                      <div key={`r2-${i}`} className="flex-1 aspect-square border-r border-b border-slate-900"></div>
+                  <div className="grid grid-cols-12 border-2 border-black">
+                    {Array.from({ length: 24 }).map((_, i) => (
+                      <div key={`cell-${i}`} className="aspect-square border border-black/30"></div>
                     ))}
                   </div>
                 </div>
@@ -97,11 +101,11 @@ export const PrintView: React.FC<PrintViewProps> = ({ gabarito, onBack }) => {
             ))}
           </div>
 
-          {/* Footer Markers */}
-          <div className="mt-4 flex justify-between items-end opacity-20">
-            <div className="w-2 h-2 border border-slate-900 border-t-0 border-r-0"></div>
-            <p className="text-[6px] font-mono">ID: {gabarito.id.slice(0,8)}</p>
-            <div className="w-2 h-2 border border-slate-900 border-t-0 border-l-0"></div>
+          {/* Small Footer Info */}
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-20">
+            <p className="text-[8px] font-mono font-bold tracking-widest uppercase">
+              ID: {gabarito.id} • CORRETOR FÁCIL PRO
+            </p>
           </div>
         </div>
       </div>
@@ -112,8 +116,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ gabarito, onBack }) => {
           .print\\:hidden { display: none !important; }
         }
         @page {
-          size: A6;
-          margin: 0;
+          size: A4;
+          margin: 10mm;
         }
       ` }} />
     </div>

@@ -73,44 +73,50 @@ export const Scanner: React.FC<ScannerProps> = ({ onBack, onResult, gabarito }) 
     };
   }, []);
 
-  const handleQRCodeFound = (data: string) => {
+  const handleQRCodeFound = async (data: string) => {
+    if (!canvasRef.current || !videoRef.current) return;
+    
     setScanning(false);
     setStatus('processing');
     
-    // In this prototype, the QR contains the answers.
-    // For open questions, we'll simulate an OCR read.
-    
-    setTimeout(() => {
-      const studentAnswers: Record<number, string> = {};
-      let correctCount = 0;
+    try {
+      // Capture the current frame as high-quality image
+      const canvas = canvasRef.current;
+      const imageData = canvas.toDataURL('image/jpeg', 0.8);
 
-      gabarito.questions.forEach((q) => {
-        if (q.type === 'MC') {
-          const isCorrect = Math.random() > 0.15;
-          const choice = isCorrect ? q.correctAnswer! : ['A', 'B', 'C', 'D', 'E'].find(a => a !== q.correctAnswer)!;
-          studentAnswers[q.id] = choice;
-          if (choice === q.correctAnswer) correctCount++;
-        } else {
-          // OPEN Question Simulation
-          // Simulate OCR reading the squares
-          const isCorrect = Math.random() > 0.3; // 70% chance to match the open text
-          const resultText = isCorrect ? q.correctText! : q.correctText?.slice(0, -1) || 'ERRADO';
-          studentAnswers[q.id] = resultText;
-          if (resultText.toUpperCase() === q.correctText?.toUpperCase()) correctCount++;
-        }
+      const response = await fetch('/api/analyze-exam', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: imageData,
+          gabarito: gabarito
+        })
       });
 
+      if (!response.ok) {
+        throw new Error('Falha na análise da IA');
+      }
+
+      const rawResult = await response.json();
+      
+      // Ensure studentAnswers uses numeric keys and add timestamp
       const result: ScanResult = {
-        studentAnswers,
-        score: correctCount,
-        total: gabarito.questions.length,
-        percentage: (correctCount / gabarito.questions.length) * 100,
-        timestamp: Date.now(),
+        ...rawResult,
+        studentAnswers: Object.entries(rawResult.studentAnswers).reduce((acc, [key, value]) => {
+          acc[Number(key)] = value as string;
+          return acc;
+        }, {} as Record<number, string>),
+        timestamp: Date.now()
       };
 
       onResult(result);
       setStatus('done');
-    }, 2000);
+    } catch (err: any) {
+      console.error('OCR/AI error:', err);
+      setError('Erro ao processar com IA: ' + err.message);
+      setScanning(true);
+      setStatus('searching');
+    }
   };
 
   return (
@@ -187,8 +193,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onBack, onResult, gabarito }) 
                   >
                     <RefreshCcw size={40} className="text-emerald-500" />
                   </motion.div>
-                  <h3 className="text-xl font-bold text-white mb-2">Processando...</h3>
-                  <p className="text-slate-500 text-sm max-w-[200px]">Analisando as marcações e calculando o desempenho.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">Analisando com IA...</h3>
+                  <p className="text-slate-500 text-sm max-w-[200px]">Utilizando inteligência artificial para ler a caligrafia e corrigir a prova.</p>
                 </motion.div>
               )}
             </AnimatePresence>

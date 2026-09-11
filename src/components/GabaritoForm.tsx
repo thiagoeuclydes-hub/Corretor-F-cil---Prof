@@ -150,7 +150,7 @@ export const GabaritoForm: React.FC<GabaritoFormProps> = ({ onSave, onCancel, in
                           <button
                             key={alt}
                             onClick={() => updateMCAnswer(q.id, alt)}
-                            className={`flex-1 aspect-square md:w-9 md:h-9 flex items-center justify-center rounded md:rounded-lg font-black transition-all text-xs md:text-base ${
+                            className={`notranslate flex-1 aspect-square md:w-9 md:h-9 flex items-center justify-center rounded md:rounded-lg font-black transition-all text-xs md:text-base ${
                               q.correctAnswer === alt
                                 ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40'
                                 : 'bg-slate-800 text-slate-500 hover:bg-slate-700 border border-slate-700'
