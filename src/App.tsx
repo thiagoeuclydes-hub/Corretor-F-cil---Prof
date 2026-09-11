@@ -4,15 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Plus, BookOpen, Trash2, Printer, Camera, Edit2, Info, LogOut, LogIn } from 'lucide-react';
+import { Plus, BookOpen, Trash2, Printer, Camera, Edit2, Info, LogOut, LogIn, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gabarito, ScanResult } from './types';
 import { GabaritoForm } from './components/GabaritoForm';
 import { PrintView } from './components/PrintView';
 import { Scanner } from './components/Scanner';
 import { ResultView } from './components/ResultView';
-import { auth, db, googleProvider } from './lib/firebase';
-import { signOut, onAuthStateChanged, User, signInWithPopup } from 'firebase/auth';
+import { db } from './lib/firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, orderBy, Timestamp } from 'firebase/firestore';
 
 type ViewState = 'dashboard' | 'form' | 'print' | 'scan' | 'result';
@@ -22,7 +21,6 @@ export default function App() {
   const [gabaritos, setGabaritos] = useState<Gabarito[]>([]);
   const [activeGabarito, setActiveGabarito] = useState<Gabarito | null>(null);
   const [lastScanResult, setLastScanResult] = useState<ScanResult | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [password, setPassword] = useState('');
   const [passError, setPassError] = useState(false);
@@ -31,16 +29,15 @@ export default function App() {
   });
 
   const ACCESS_PASSWORD = '100529';
+  const ADMIN_USER_ID = 'admin-thiago-euclydes'; // Identificador fixo para persistência
 
-  // Auth listener
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
+    // Simulação de carregamento inicial
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
   }, []);
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ACCESS_PASSWORD) {
       setIsAuthorized(true);
@@ -52,38 +49,21 @@ export default function App() {
     }
   };
 
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error: any) {
-      console.error('Login failed', error);
-      if (error.code === 'auth/unauthorized-domain') {
-        alert('Erro: Este domínio não está autorizado no Firebase. Adicione o link do Vercel/GitHub nas configurações de "Domínios Autorizados" do console do Firebase.');
-      } else {
-        alert('Falha no login: ' + error.message);
-      }
-    }
-  };
-
   const handleLogout = () => {
     setIsAuthorized(false);
     localStorage.removeItem('app_authorized');
-    signOut(auth);
   };
-
-  // Check if the logged in user is the owner
-  const isOwner = user?.email?.toLowerCase() === 'thiagoeuclydes@gmail.com';
 
   // Firestore listener
   useEffect(() => {
-    if (!user || !isAuthorized || !isOwner) {
+    if (!isAuthorized) {
       setGabaritos([]);
       return;
     }
 
     const q = query(
       collection(db, 'gabaritos'),
-      where('userId', '==', user.uid),
+      where('userId', '==', ADMIN_USER_ID),
       orderBy('createdAt', 'desc')
     );
 
@@ -97,19 +77,14 @@ export default function App() {
     }, (error) => {
       console.error("Firestore listener error:", error);
       if (error.code === 'permission-denied') {
-        alert('Erro de permissão no banco de dados. Verifique as regras do Firestore.');
+        alert('Erro de permissão no banco de dados. Verifique as regras do Firestore para permitir acesso sem Auth se desejar, ou mantenha o identificador estático.');
       }
     });
 
     return unsubscribe;
-  }, [user, isAuthorized, isOwner]);
+  }, [isAuthorized]);
 
   const handleSaveGabarito = async (gabarito: Gabarito) => {
-    if (!user) {
-      alert('Você precisa estar logado para salvar.');
-      return;
-    }
-    
     try {
       // Sanitize questions to remove undefined values which Firestore doesn't support
       const sanitizedQuestions = gabarito.questions.map(q => {
@@ -126,7 +101,7 @@ export default function App() {
       await setDoc(docRef, {
         ...gabarito,
         questions: sanitizedQuestions,
-        userId: user.uid,
+        userId: ADMIN_USER_ID,
         createdAt: Timestamp.fromMillis(gabarito.createdAt)
       });
       setView('dashboard');
@@ -169,7 +144,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6">
         <motion.div
@@ -181,67 +156,34 @@ export default function App() {
             <BookOpen size={48} />
           </div>
           <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase">CORRETOR FÁCIL</h1>
-          <p className="text-slate-500 mb-8 font-medium">Acesso restrito ao administrador.</p>
-          
-          <button
-            onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-3 py-4 bg-white text-slate-900 rounded-2xl font-bold hover:bg-slate-100 transition-all shadow-lg"
-          >
-            <LogIn size={20} /> Entrar com Google
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!isOwner) {
-    return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-[#0f172a] p-8 rounded-3xl border border-red-900/30 text-center">
-          <h2 className="text-xl font-bold text-red-500 mb-2">Acesso Negado</h2>
-          <p className="text-slate-500 mb-6">Este aplicativo é de uso exclusivo de Thiago Euclydes.</p>
-          <button onClick={handleLogout} className="text-blue-500 font-bold underline">Trocar conta</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-[#0f172a] p-8 rounded-3xl border border-slate-800 text-center shadow-2xl"
-        >
-          <div className="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <LogIn size={32} />
-          </div>
-          <h1 className="text-2xl font-black text-white mb-2 uppercase">Verificação de PIN</h1>
-          <p className="text-slate-500 mb-8 font-medium">Bem-vindo, Thiago. Digite sua senha para acessar os gabaritos.</p>
+          <p className="text-slate-500 mb-8 font-medium">Digite o PIN de acesso para entrar.</p>
           
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setPassError(false);
-              }}
-              placeholder="Digite sua senha"
-              className={`w-full px-4 py-4 rounded-2xl bg-slate-900 border ${passError ? 'border-red-500' : 'border-slate-800'} text-white text-center text-2xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-700 placeholder:tracking-normal placeholder:text-base`}
-              autoFocus
-            />
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={20} />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPassError(false);
+                }}
+                placeholder="PIN de Acesso"
+                className={`w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-900 border ${passError ? 'border-red-500' : 'border-slate-800'} text-white text-center text-2xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-700 placeholder:tracking-normal placeholder:text-base`}
+                autoFocus
+              />
+            </div>
             {passError && (
-              <p className="text-red-500 text-xs font-bold uppercase tracking-widest">Senha incorreta</p>
+              <p className="text-red-500 text-xs font-bold uppercase tracking-widest">PIN incorreto</p>
             )}
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-3 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-950/40"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-950/40"
             >
-              Confirmar PIN
+              Entrar no Painel
             </button>
           </form>
+          <p className="mt-8 text-slate-600 text-[10px] uppercase tracking-widest font-bold">Acesso restrito ao administrador</p>
         </motion.div>
       </div>
     );
@@ -268,7 +210,7 @@ export default function App() {
                   <h1 className="text-2xl md:text-4xl font-black tracking-tighter text-white leading-none">
                     CORRETOR FÁCIL
                   </h1>
-                  <p className="text-slate-500 text-xs md:text-base font-medium mt-0.5">Olá, {user.displayName?.split(' ')[0]}</p>
+                  <p className="text-slate-500 text-xs md:text-base font-medium mt-0.5">Olá, Thiago</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
