@@ -43,32 +43,33 @@ app.post("/api/analyze-exam", async (req, res) => {
       ${JSON.stringify(gabarito.questions, null, 2)}
       
       PASSO A PASSO DA ANÁLISE:
-      1. ORIENTAÇÃO: Localize os 4 quadrados pretos nos cantos da folha. Use-os para alinhar sua perspectiva.
-      2. IDENTIFICAÇÃO: Localize o QR Code à esquerda para confirmar a estrutura da prova.
+      1. ORIENTAÇÃO: Localize os 4 quadrados pretos nos cantos da folha. Eles são fundamentais para compensar qualquer distorção de perspectiva ou inclinação da foto.
+      2. IDENTIFICAÇÃO: Ignore o conteúdo do QR Code (ele já foi lido pelo app), foque na estrutura da folha.
       3. PROCESSAMENTO OMR (Múltipla Escolha):
-         - Procure pelas questões numeradas dispostas em colunas.
          - Cada questão possui círculos de A a E.
-         - Identifique qual círculo foi PREENCHIDO, marcado com um 'X' ou circulado. 
-         - Se houver rasura (duas marcações), marque como vazio ou a marcação mais forte.
+         - Identifique a marcação do aluno. Se houver um 'X' sobre a letra ou o círculo estiver preenchido, essa é a resposta.
+         - Seja resiliente a sombras ou reflexos na foto.
       4. PROCESSAMENTO OCR (Questões Abertas):
-         - Localize as caixas de grade na parte inferior.
-         - Realize o reconhecimento de caracteres (OCR) das letras escritas à mão (letras de fôrma maiúsculas).
-         - Extraia a palavra ou frase completa.
+         - Leia as letras manuscritas nos boxes de grade.
+         - O aluno escreve uma letra por caixa. Junte-as para formar a palavra.
+         - Se uma letra estiver ambígua (ex: 'O' vs '0'), use o contexto da palavra do gabarito para decidir.
       
       COMPARAÇÃO E PONTUAÇÃO:
-      - Compare cada resposta extraída com o 'correctAnswer' (para MC) ou 'correctText' (para OPEN).
-      - Para questões abertas, pequenas variações de caligrafia que mantenham o sentido da palavra do gabarito devem ser consideradas corretas.
+      - Compare cada resposta com o gabarito.
+      - Para questões abertas, aceite a resposta se a palavra escrita pelo aluno for a mesma do gabarito, mesmo com caligrafia irregular.
       
       SAÍDA OBRIGATÓRIA (APENAS JSON):
       Retorne exclusivamente um objeto JSON seguindo este formato rigoroso:
       {
         "studentAnswers": {
-          "ID_DA_QUESTAO": "RESPOSTA_LIDA_DO_ALUNO"
+          "ID_DA_QUESTAO": { "value": "RESPOSTA_LIDA", "x": POSICAO_X_PERCENTUAL, "y": POSICAO_Y_PERCENTUAL }
         },
         "score": TOTAL_DE_ACERTOS,
         "total": TOTAL_DE_QUESTOES,
         "percentage": PERCENTAGEM_DE_ACERTO
       }
+      
+      IMPORTANTE: 'x' e 'y' devem ser números de 0 a 100 representando a posição aproximada do centro do círculo marcado na imagem.
     `;
 
     const response = await ai.models.generateContent({
@@ -79,7 +80,7 @@ app.post("/api/analyze-exam", async (req, res) => {
             { text: prompt },
             {
               inlineData: {
-                data: image.split(",")[1], // Remove the data:image/jpeg;base64, part
+                data: image.includes(",") ? image.split(",")[1] : image, 
                 mimeType: "image/jpeg",
               },
             },
@@ -88,16 +89,26 @@ app.post("/api/analyze-exam", async (req, res) => {
       ],
     });
 
-    const text = response.text || "";
+    if (!response.text) {
+      throw new Error("A IA não conseguiu gerar uma resposta para esta imagem. Tente aproximar mais a câmera.");
+    }
+
+    const text = response.text;
     
     // Clean JSON from markdown if present
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error("Could not parse Gemini response as JSON");
+      console.error("Gemini non-JSON response:", text);
+      throw new Error("A IA retornou um formato inválido. Tente novamente.");
     }
     
-    const analysisResult = JSON.parse(jsonMatch[0]);
-    res.json(analysisResult);
+    try {
+      const analysisResult = JSON.parse(jsonMatch[0]);
+      res.json(analysisResult);
+    } catch (parseError) {
+      console.error("JSON parse error:", text);
+      throw new Error("Erro ao interpretar a correção da IA.");
+    }
 
   } catch (error: any) {
     console.error("Gemini analysis error:", error);

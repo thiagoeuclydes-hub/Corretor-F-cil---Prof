@@ -15,10 +15,17 @@ export interface Gabarito {
   userId?: string;
 }
 
+export interface AnswerWithPosition {
+  value: string;
+  x?: number; // percentage 0-100
+  y?: number; // percentage 0-100
+}
+
 export interface ScanResult {
-  studentAnswers: Record<number, string>;
+  studentAnswers: Record<number, AnswerWithPosition>;
   score: number;
   total: number;
   percentage: number;
   timestamp: number;
+  capturedImage?: string; // base64
 }

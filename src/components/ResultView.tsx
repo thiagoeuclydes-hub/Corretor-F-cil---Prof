@@ -37,6 +37,31 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, gabarito, onRetr
             <div className="text-xs md:text-lg font-bold uppercase tracking-wider">Nota: {result.percentage.toFixed(1)}%</div>
           </div>
 
+          {/* Visual Overlay - Mirroring the video request */}
+          {result.capturedImage && (
+            <div className="mb-6 md:mb-8 relative rounded-2xl overflow-hidden border-2 border-slate-800 bg-black">
+              <img src={result.capturedImage} alt="Captured Exam" className="w-full h-auto opacity-70" />
+              {/* Overlay Dots */}
+              {Object.entries(result.studentAnswers).map(([id, ans]) => {
+                const answer = ans as any;
+                return answer.x !== undefined && answer.y !== undefined && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    key={`dot-${id}`}
+                    className="absolute w-4 h-4 md:w-6 md:h-6 -ml-2 -mt-2 md:-ml-3 md:-mt-3 rounded-full bg-emerald-500 border-2 border-white shadow-lg flex items-center justify-center"
+                    style={{ left: `${answer.x}%`, top: `${answer.y}%` }}
+                  >
+                    <span className="text-[6px] md:text-[8px] font-black text-white">{id}</span>
+                  </motion.div>
+                );
+              })}
+              <div className="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded text-[8px] font-bold text-white uppercase tracking-widest border border-white/20">
+                Verificação Visual
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             <button
               onClick={onRetry}
@@ -62,10 +87,11 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, gabarito, onRetr
           
           <div className="space-y-2 md:space-y-3">
             {gabarito.questions.map((q) => {
-              const studentAnswer = result.studentAnswers[q.id];
+              const studentAnswerObj = result.studentAnswers[Number(q.id)];
+              const studentValue = studentAnswerObj?.value || '';
               const isCorrect = q.type === 'MC' 
-                ? studentAnswer === q.correctAnswer 
-                : studentAnswer.toUpperCase() === q.correctText?.toUpperCase();
+                ? studentValue === q.correctAnswer 
+                : studentValue.toUpperCase() === q.correctText?.toUpperCase();
               
               return (
                 <div
@@ -83,7 +109,7 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, gabarito, onRetr
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 md:gap-2">
                       <span className={`notranslate text-base md:text-lg font-black ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {studentAnswer}
+                        {studentValue || '-'}
                       </span>
                       {isCorrect ? (
                         <CheckCircle2 size={14} className="text-emerald-500" />
