@@ -1,0 +1,10 @@
+{
+  "collections": {
+    "gabaritos": {
+      "name": "string",
+      "questions": "array",
+      "userId": "string",
+      "createdAt": "timestamp"
+    }
+  }
+}

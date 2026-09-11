@@ -1,0 +1,6 @@
+{
+  "name": "CORRETOR FÁCIL - PROF",
+  "description": "Aplicativo para correção rápida de provas e gabaritos via câmera do celular com tecnologia OMR e QR Code.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
