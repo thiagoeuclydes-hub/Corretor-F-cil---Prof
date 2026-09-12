@@ -34,46 +34,43 @@ app.post("/api/analyze-exam", async (req, res) => {
       return res.status(500).json({ error: "Gemini API key not configured" });
     }
 
-    // Prepare the prompt with high-precision visual reasoning
+    // Prepare the prompt with high-precision visual reasoning and chain-of-thought
     const prompt = `
-      Você é um sistema especialista em análise visual de documentos educacionais (OMR e OCR).
-      Sua missão é extrair com 100% de precisão as respostas marcadas pelo aluno nesta folha de respostas.
-      
-      GABARITO OFICIAL (PARA REFERÊNCIA DE IDs):
+      Você é um sistema de visão computacional de elite especializado em análise de documentos educacionais (OMR e OCR).
+      Sua tarefa é analisar a folha de respostas anexada e extrair as marcações do aluno com 100% de precisão.
+
+      ESTRUTURA DA PROVA (GABARITO OFICIAL):
       ${JSON.stringify(gabarito.questions, null, 2)}
-      
-      PASSO A PASSO DA ANÁLISE:
-      1. ORIENTAÇÃO: Localize os 4 quadrados pretos nos cantos da folha. Eles são fundamentais para compensar qualquer distorção de perspectiva ou inclinação da foto.
-      2. IDENTIFICAÇÃO: Ignore o conteúdo do QR Code (ele já foi lido pelo app), foque na estrutura da folha.
-      3. PROCESSAMENTO OMR (Múltipla Escolha):
-         - Cada questão possui círculos de A a E.
-         - Identifique a marcação do aluno. Se houver um 'X' sobre a letra ou o círculo estiver preenchido, essa é a resposta.
-         - Seja resiliente a sombras ou reflexos na foto.
-      4. PROCESSAMENTO OCR (Questões Abertas):
-         - Leia as letras manuscritas nos boxes de grade.
+
+      PROTOCOLO DE ANÁLISE RIGOROSO:
+      1. MAPEAMENTO GEOMÉTRICO: Localize os 4 quadrados pretos nos cantos (âncoras). Use-os para alinhar a perspectiva e compensar qualquer inclinação da foto.
+      2. IDENTIFICAÇÃO DE QUESTÕES: Localize cada questão com base na sua posição relativa na folha.
+      3. ANÁLISE DE MARCAÇÃO (OMR):
+         - Para cada questão de múltipla escolha (MC), verifique os círculos A, B, C, D, E.
+         - Identifique qual círculo foi preenchido, marcado com um 'X' ou circulado de forma inequívoca.
+         - Se houver rasura ou marcação dupla, identifique a intenção mais clara ou a marcação mais forte.
+      4. RECONHECIMENTO DE TEXTO (OCR):
+         - Para questões abertas (OPEN), leia as letras manuscritas dentro dos boxes de grade na parte inferior.
          - O aluno escreve uma letra por caixa. Junte-as para formar a palavra.
-         - Se uma letra estiver ambígua (ex: 'O' vs '0'), use o contexto da palavra do gabarito para decidir.
-      
-      COMPARAÇÃO E PONTUAÇÃO:
-      - Compare cada resposta com o gabarito.
-      - Para questões abertas, aceite a resposta se a palavra escrita pelo aluno for a mesma do gabarito, mesmo com caligrafia irregular.
-      
+         - Compare com o 'correctText' do gabarito. Aceite variações de caligrafia se a palavra for a mesma.
+
       SAÍDA OBRIGATÓRIA (APENAS JSON):
-      Retorne exclusivamente um objeto JSON seguindo este formato rigoroso:
+      Retorne exclusivamente um objeto JSON seguindo este formato:
       {
+        "reasoning": "Descreva brevemente o que você observou na folha para garantir a precisão da leitura",
         "studentAnswers": {
-          "ID_DA_QUESTAO": { "value": "RESPOSTA_LIDA", "x": POSICAO_X_PERCENTUAL, "y": POSICAO_Y_PERCENTUAL }
+          "ID_DA_QUESTAO": { "value": "RESPOSTA", "x": POSICAO_X_PERCENTUAL, "y": POSICAO_Y_PERCENTUAL }
         },
         "score": TOTAL_DE_ACERTOS,
         "total": TOTAL_DE_QUESTOES,
-        "percentage": PERCENTAGEM_DE_ACERTO
+        "percentage": PERCENTAGEM
       }
-      
-      IMPORTANTE: 'x' e 'y' devem ser números de 0 a 100 representando a posição aproximada do centro do círculo marcado na imagem.
+
+      IMPORTANTE: 'x' e 'y' devem ser números de 0 a 100 representando a posição aproximada do centro da marcação do aluno na imagem.
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
+      model: "gemini-1.5-pro",
       contents: [
         {
           parts: [
